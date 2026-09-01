@@ -1,0 +1,38 @@
+name: Bootstrap exact MAVIS STANDARD release
+on:
+  push:
+    branches: [main]
+    paths: ['.deploy/READY']
+permissions:
+  contents: write
+jobs:
+  deploy:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          ref: deploy-stage
+          path: stage
+      - name: Reconstruct and verify exact release
+        shell: bash
+        run: |
+          cat stage/.deploy/chunk-*.txt | tr -d '\n\r' | base64 -d > /tmp/mavis.zip
+          echo 'e98bd85e2702488a3c45924f55e9250c0690050ee850d6a7fd6399e74c04de9e  /tmp/mavis.zip' | sha256sum -c -
+          mkdir -p /tmp/release
+          unzip -q /tmp/mavis.zip -d /tmp/release
+          test -f /tmp/release/MAVIS-STANDARD/index.html
+      - uses: actions/checkout@v4
+        with:
+          ref: main
+          path: prod
+      - name: Publish exact package
+        shell: bash
+        run: |
+          find prod -mindepth 1 -maxdepth 1 ! -name .git -exec rm -rf {} +
+          cp -a /tmp/release/MAVIS-STANDARD/. prod/
+          cd prod
+          git config user.name 'KELBRIC Technologies'
+          git config user.email 'arjayb.fb@gmail.com'
+          git add -A
+          git commit -m 'Deploy MAVIS STANDARD v2 mobile-hardened release'
+          git push origin main
