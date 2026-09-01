@@ -1,0 +1,2259 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0, viewport-fit=cover">
+    <meta name="theme-color" content="#0f1115">
+    <meta name="apple-mobile-web-app-capable" content="yes">
+    <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
+    <link rel="manifest" href="manifest.json">
+    <title>MAVIS v2 — Visual Canvas Editor</title>
+    <style>
+        * {
+            margin: 0;
+            padding: 0;
+            box-sizing: border-box;
+        }
+
+        :root {
+            --primary: #0066cc;
+            --primary-dark: #0052a3;
+            --success: #388e3c;
+            --danger: #d32f2f;
+            --border: #ddd;
+            --bg: #f5f5f5;
+            --text: #333;
+            --light-text: #666;
+            --white: #fff;
+            --grid-line: #e8e8e8;
+
+            /* Dark mode for sidebar/properties */
+            --dark-bg: #1e1e1e;
+            --dark-surface: #2a2a2a;
+            --dark-border: #404040;
+            --dark-text: #e0e0e0;
+            --dark-text-light: #a0a0a0;
+        }
+
+        body {
+            font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif;
+            background: var(--bg);
+            color: var(--text);
+            line-height: 1.6;
+            position: fixed;
+            inset: 0;
+            width: 100vw;
+            height: 100dvh;
+            overscroll-behavior: none;
+            -webkit-tap-highlight-color: transparent;
+        }
+
+        html, body {
+            height: 100%;
+            overflow: hidden;
+        }
+
+        .app {
+            display: flex;
+            height: 100dvh;
+            gap: 0;
+        }
+
+        /* Sidebar */
+        .sidebar {
+            width: 320px;
+            background: var(--dark-bg);
+            border-right: 1px solid var(--dark-border);
+            display: flex;
+            flex-direction: column;
+            overflow-y: auto;
+            overflow-x: hidden;
+            flex-shrink: 0;
+        }
+
+        .sidebar-header {
+            padding: 15px;
+            border-bottom: 1px solid var(--dark-border);
+            background: var(--dark-surface);
+        }
+
+        .sidebar-header h1 {
+            font-size: 16px;
+            margin-bottom: 3px;
+            color: var(--dark-text);
+        }
+
+        .sidebar-title {
+            font-size: 11px;
+            color: var(--dark-text-light);
+            font-weight: 600;
+            text-transform: uppercase;
+        }
+
+        .sidebar-section {
+            padding: 15px;
+            border-bottom: 1px solid var(--dark-border);
+        }
+
+        .sidebar-section h3 {
+            font-size: 12px;
+            font-weight: 600;
+            margin-bottom: 10px;
+            color: var(--dark-text);
+        }
+
+        .form-group {
+            margin-bottom: 12px;
+        }
+
+        .form-group label {
+            display: block;
+            font-size: 11px;
+            font-weight: 600;
+            margin-bottom: 4px;
+            color: var(--dark-text);
+        }
+
+        .form-group input,
+        .form-group select,
+        .form-group textarea {
+            width: 100%;
+            padding: 10px 12px;
+            border: 2px solid var(--dark-border);
+            border-radius: 4px;
+            font-size: 13px;
+            font-family: inherit;
+            line-height: 1.4;
+            background: var(--dark-surface);
+            color: var(--dark-text);
+        }
+
+        .form-group input:focus,
+        .form-group select:focus,
+        .form-group textarea:focus {
+            outline: none;
+            border-color: var(--primary);
+            box-shadow: 0 0 0 2px rgba(0, 102, 204, 0.2);
+            background: #333;
+        }
+
+        .form-group input::placeholder {
+            color: var(--dark-text-light);
+        }
+
+        .sidebar button {
+            padding: 10px 12px;
+            background: var(--primary);
+            color: white;
+            border: none;
+            border-radius: 4px;
+            cursor: pointer;
+            font-size: 13px;
+            font-weight: 600;
+            transition: background 0.2s;
+        }
+
+        .sidebar button:hover {
+            background: var(--primary-dark);
+        }
+
+        .sidebar button.secondary {
+            background: #555;
+        }
+
+        .sidebar button.secondary:hover {
+            background: #666;
+        }
+
+        .element-library {
+            flex: 1;
+            overflow-y: auto;
+            padding: 0;
+        }
+
+        .element-category {
+            border-bottom: 1px solid var(--border);
+        }
+
+        .element-category-title {
+            padding: 10px 15px;
+            background: #f9f9f9;
+            font-size: 11px;
+            font-weight: 600;
+            color: var(--light-text);
+            text-transform: uppercase;
+        }
+
+        .element-items {
+            padding: 8px;
+            display: flex;
+            flex-direction: column;
+            gap: 6px;
+        }
+
+        .element-item {
+            padding: 8px 10px;
+            background: #f5f5f5;
+            border: 1px solid var(--border);
+            border-radius: 3px;
+            cursor: grab;
+            font-size: 12px;
+            font-weight: 500;
+            transition: all 0.2s;
+            text-align: center;
+        }
+
+        .element-item:hover {
+            background: #efefef;
+            border-color: var(--primary);
+        }
+
+        .element-item:active {
+            cursor: grabbing;
+        }
+
+        /* Main content */
+        .main {
+            flex: 1;
+            display: flex;
+            flex-direction: column;
+            overflow: hidden;
+            min-width: 0;
+        }
+
+        .toolbar {
+            padding: 10px 15px;
+            background: white;
+            border-bottom: 1px solid var(--border);
+            display: flex;
+            gap: 10px;
+            align-items: center;
+            flex-wrap: wrap;
+        }
+
+        .toolbar button {
+            padding: 6px 12px;
+            background: var(--primary);
+            color: white;
+            border: none;
+            border-radius: 3px;
+            cursor: pointer;
+            font-size: 12px;
+            font-weight: 500;
+        }
+
+        .toolbar button:hover {
+            background: var(--primary-dark);
+        }
+
+        .toolbar button.secondary {
+            background: #666;
+        }
+
+        .toolbar button.danger {
+            background: var(--danger);
+        }
+
+        .toolbar-spacer {
+            flex: 1;
+        }
+
+        .toolbar-info {
+            font-size: 11px;
+            color: var(--light-text);
+        }
+
+        /* Canvas area */
+        .canvas-area {
+            flex: 1;
+            display: flex;
+            gap: 0;
+            padding: 0;
+            overflow: hidden;
+            align-items: center;
+            justify-content: center;
+            min-width: 0;
+            background: #f5f5f5;
+        }
+
+        .canvas-center {
+            display: flex;
+            flex-direction: column;
+            align-items: center;
+            justify-content: center;
+            flex: 1;
+            overflow: hidden;
+        }
+
+        .canvas-container {
+            display: flex;
+            flex-direction: column;
+            width: 540px;
+            height: 960px;
+            flex-shrink: 0;
+            max-width: 540px;
+            max-height: 960px;
+        }
+
+        .canvas-container.landscape {
+            width: 960px;
+            height: 540px;
+            max-width: 960px;
+            max-height: 540px;
+        }
+
+        .canvas-label {
+            font-size: 12px;
+            font-weight: 600;
+            margin-bottom: 8px;
+            color: var(--text);
+        }
+
+        .canvas-frame {
+            flex: 1;
+            background: white;
+            border: 2px solid var(--border);
+            border-radius: 6px;
+            overflow: hidden;
+            position: relative;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            touch-action: none;
+            overscroll-behavior: contain;
+        }
+
+        .grid {
+            position: relative;
+            background-image:
+                linear-gradient(rgba(76, 175, 80, 0.5) 1px, transparent 1px),
+                linear-gradient(90deg, rgba(76, 175, 80, 0.5) 1px, transparent 1px);
+            z-index: 1;
+            transform-origin: center;
+            transition: transform 0.1s ease-out;
+        }
+
+        .grid-cell {
+            position: absolute;
+            border: 1px solid var(--grid-line);
+            background: rgba(0, 102, 204, 0.02);
+        }
+
+        .grid-cell.occupied {
+            background: rgba(0, 102, 204, 0.08);
+        }
+
+        .canvas-element {
+            position: absolute;
+            background: white;
+            border: 2px solid var(--primary);
+            border-radius: 4px;
+            padding: 8px;
+            cursor: move;
+            transition: box-shadow 0.2s;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            font-size: 11px;
+            font-weight: 500;
+            color: var(--text);
+            overflow: hidden;
+            z-index: 100;
+            touch-action: none;
+            will-change: transform, top, left;
+            min-width: 44px;
+            min-height: 44px;
+        }
+
+        .canvas-element:hover {
+            box-shadow: 0 2px 8px rgba(0, 0, 0, 0.15);
+            z-index: 10;
+        }
+
+        .canvas-element.selected {
+            border-color: var(--danger);
+            background: rgba(211, 47, 47, 0.05);
+        }
+
+        .canvas-element img {
+            max-width: 100%;
+            max-height: 100%;
+            object-fit: contain;
+        }
+
+        .element-handle {
+            position: absolute;
+            bottom: 0;
+            right: 0;
+            width: 12px;
+            height: 12px;
+            background: var(--primary);
+            cursor: se-resize;
+            border-radius: 2px 0 4px 0;
+        }
+
+        /* Properties panel */
+        .properties-panel {
+            width: 320px;
+            background: var(--dark-bg);
+            border-left: 1px solid var(--dark-border);
+            display: flex;
+            flex-direction: column;
+            overflow-y: auto;
+            overflow-x: hidden;
+            flex-shrink: 0;
+            height: 100%;
+        }
+
+        .properties-header {
+            padding: 12px 15px;
+            border-bottom: 1px solid var(--dark-border);
+            background: var(--dark-surface);
+            font-size: 12px;
+            font-weight: 600;
+            color: var(--dark-text);
+        }
+
+        .properties-content {
+            padding: 15px;
+            flex: 1;
+            overflow-y: auto;
+        }
+
+        .property-group {
+            margin-bottom: 15px;
+        }
+
+        .property-label {
+            font-size: 11px;
+            font-weight: 600;
+            margin-bottom: 5px;
+            color: var(--dark-text);
+            display: block;
+        }
+
+        .property-value {
+            font-size: 12px;
+            color: var(--dark-text-light);
+            padding: 8px 12px;
+            background: var(--dark-surface);
+            border-radius: 3px;
+            word-break: break-word;
+            border: 1px solid var(--dark-border);
+        }
+
+        /* Messages */
+        .message {
+            position: fixed;
+            bottom: 20px;
+            right: 20px;
+            padding: 12px 16px;
+            border-radius: 4px;
+            font-size: 12px;
+            z-index: 1000;
+            animation: slideUp 0.3s ease-out;
+        }
+
+        .message.success {
+            background: var(--success);
+            color: white;
+        }
+
+        .message.error {
+            background: var(--danger);
+            color: white;
+        }
+
+        @keyframes slideUp {
+            from {
+                transform: translateY(100px);
+                opacity: 0;
+            }
+            to {
+                transform: translateY(0);
+                opacity: 1;
+            }
+        }
+
+        input[type="file"] {
+            display: none;
+        }
+
+        /* Unlock slider */
+        .unlock-slider-wrapper {
+            display: flex;
+            align-items: center;
+            gap: 10px;
+            padding: 8px;
+            background: var(--dark-surface);
+            border-radius: 4px;
+            margin-bottom: 8px;
+        }
+
+        .unlock-slider {
+            flex: 1;
+            height: 24px;
+            -webkit-appearance: none;
+            appearance: none;
+            background: linear-gradient(to right, #999 0%, #999 50%, #4CAF50 50%, #4CAF50 100%);
+            border-radius: 12px;
+            outline: none;
+            cursor: pointer;
+        }
+
+        .unlock-slider::-webkit-slider-thumb {
+            -webkit-appearance: none;
+            appearance: none;
+            width: 24px;
+            height: 24px;
+            border-radius: 50%;
+            background: white;
+            cursor: pointer;
+            box-shadow: 0 2px 4px rgba(0,0,0,0.3);
+            border: 2px solid #333;
+        }
+
+        .unlock-slider::-moz-range-thumb {
+            width: 24px;
+            height: 24px;
+            border-radius: 50%;
+            background: white;
+            cursor: pointer;
+            box-shadow: 0 2px 4px rgba(0,0,0,0.3);
+            border: 2px solid #333;
+        }
+
+        .unlock-label {
+            font-size: 11px;
+            color: var(--dark-text-light);
+            white-space: nowrap;
+        }
+
+        .danger-button-locked {
+            opacity: 0.5;
+            cursor: not-allowed;
+        }
+
+        .mobile-panel-toggle {
+            display: none;
+        }
+
+        @media (max-width: 768px) {
+            .app {
+                width: 100vw;
+                height: 100dvh;
+            }
+
+            .main {
+                width: 100vw;
+            }
+
+            .toolbar {
+                padding: 8px;
+                gap: 6px;
+                flex-wrap: nowrap;
+                overflow-x: auto;
+                -webkit-overflow-scrolling: touch;
+            }
+
+            .toolbar button,
+            .sidebar button,
+            .properties-panel button,
+            .form-group input,
+            .form-group select {
+                min-height: 44px;
+            }
+
+            .mobile-panel-toggle {
+                display: inline-flex;
+                align-items: center;
+                justify-content: center;
+                min-width: 44px;
+                flex: 0 0 auto;
+            }
+
+            .toolbar-info {
+                white-space: nowrap;
+            }
+
+            .canvas-area {
+                position: relative;
+                width: 100%;
+                height: 100%;
+            }
+
+            .canvas-center {
+                width: 100%;
+                height: 100%;
+            }
+
+            .canvas-container,
+            .canvas-container.landscape {
+                width: 100%;
+                height: 100%;
+                max-width: none;
+                max-height: none;
+                padding: 6px;
+            }
+
+            .canvas-label {
+                margin-bottom: 4px;
+            }
+
+            .sidebar,
+            .properties-panel {
+                position: fixed;
+                left: 0;
+                right: 0;
+                bottom: 0;
+                width: 100%;
+                max-height: 72dvh;
+                height: auto;
+                z-index: 2000;
+                border: 0;
+                border-top: 1px solid var(--dark-border);
+                border-radius: 14px 14px 0 0;
+                box-shadow: 0 -8px 28px rgba(0,0,0,0.35);
+                transform: translateY(105%);
+                transition: transform 180ms ease-out;
+                overflow-y: auto;
+                overscroll-behavior: contain;
+                touch-action: pan-y;
+            }
+
+            .sidebar.mobile-open,
+            .properties-panel.mobile-open {
+                transform: translateY(0);
+            }
+
+            .sidebar-header,
+            .properties-header {
+                position: sticky;
+                top: 0;
+                z-index: 2;
+            }
+
+            .element-handle {
+                width: 24px;
+                height: 24px;
+            }
+
+            .message {
+                left: 12px;
+                right: 12px;
+                bottom: 12px;
+            }
+        }
+
+        /* Remove number input spinners */
+        input[type="number"]::-webkit-outer-spin-button,
+        input[type="number"]::-webkit-inner-spin-button {
+            -webkit-appearance: none;
+            margin: 0;
+        }
+
+        input[type="number"] {
+            -moz-appearance: textfield;
+        }
+
+        .empty-state {
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            height: 100%;
+            text-align: center;
+            color: var(--light-text);
+            font-size: 13px;
+        }
+    </style>
+</head>
+<body>
+    <div class="app">
+        <!-- Sidebar -->
+        <div class="sidebar">
+            <div class="sidebar-header">
+                <h1>MAVIS v2</h1>
+                <p class="sidebar-title">Visual Canvas Editor</p>
+            </div>
+
+            <div class="sidebar-section">
+                <h3>Project</h3>
+                <div class="form-group">
+                    <label>Project Name</label>
+                    <input type="text" id="projectName" placeholder="My Project" value="Untitled Project">
+                </div>
+                <div style="display: flex; gap: 8px;">
+                    <button onclick="saveProject()" style="flex: 1; background: var(--success);">💾 Save</button>
+                    <button onclick="downloadProjectCSV()" style="flex: 1; background: #666;">⬇️ CSV</button>
+                </div>
+                <div style="display: flex; gap: 8px; margin-top: 8px;">
+                    <button onclick="exportPagePNG()" style="flex: 1; background: #9c27b0;">🖼️ Page PNG</button>
+                    <button onclick="exportAllPagesPNG()" style="flex: 1; background: #ff6f00;">📐 All Pages</button>
+                </div>
+            </div>
+
+            <div class="sidebar-section">
+                <h3>Pages</h3>
+                <div class="form-group">
+                    <label>Current Page</label>
+                    <select id="pageSelector" onchange="loadSelectedPage()" style="margin-bottom: 10px;">
+                        <option value="">— No pages —</option>
+                    </select>
+                </div>
+                <button onclick="createNewPage()" style="width: 100%; margin-bottom: 12px;">+ Create Page</button>
+                <div class="unlock-slider-wrapper">
+                    <input type="range" min="0" max="100" value="0" id="deletePageSlider" class="unlock-slider" onchange="updateDeletePageButton()">
+                    <span class="unlock-label" id="deletePageLabel">Locked</span>
+                </div>
+                <button id="deletePageBtn" onclick="deleteCurrentPage()" class="secondary danger-button-locked" style="width: 100%; background: var(--danger);">🗑️ Delete Page</button>
+            </div>
+
+            <div class="sidebar-section">
+                <h3>Page Setup</h3>
+                <div class="form-group">
+                    <label>Page Name</label>
+                    <input type="text" id="pageName" placeholder="e.g., Studio Selection" value="Untitled Page">
+                </div>
+                <div class="form-group">
+                    <label>Orientation</label>
+                    <select id="orientation" onchange="updateGridOptions()">
+                        <option value="portrait">Portrait (9×16)</option>
+                        <option value="landscape">Landscape (16×9)</option>
+                    </select>
+                </div>
+                <div class="form-group">
+                    <label>Grid Size</label>
+                    <div style="display: flex; gap: 5px;">
+                        <input type="number" id="gridWidth" min="1" max="16" value="6" placeholder="W" style="flex: 1;">
+                        <input type="number" id="gridHeight" min="1" max="16" value="12" placeholder="H" style="flex: 1;">
+                    </div>
+                    <div style="font-size: 10px; color: var(--dark-text-light); margin-top: 4px;" id="gridValidation"></div>
+                </div>
+                <div class="form-group">
+                    <label>Grid Color</label>
+                    <div style="display: flex; gap: 5px;">
+                        <input type="color" id="gridColor" value="#4CAF50" style="flex: 1; height: 36px; cursor: pointer;">
+                        <button onclick="updateGridColor()" style="flex: 0 0 60px; background: var(--primary);">OK</button>
+                    </div>
+                </div>
+                <div class="form-group">
+                    <label>Zone</label>
+                    <select id="pageZone">
+                        <option value="YELLOW">YELLOW</option>
+                        <option value="RED">RED</option>
+                        <option value="BLUE">BLUE</option>
+                        <option value="GREEN">GREEN</option>
+                    </select>
+                </div>
+                <button onclick="savePageSettings()" style="width: 100%; margin-top: 10px; background: var(--success);">💾 Save Page</button>
+            </div>
+
+            <div class="sidebar-section">
+                <h3>Image Library</h3>
+                <div class="form-group">
+                    <label>Image Name</label>
+                    <input type="text" id="imageName" placeholder="e.g., Hero, Avatar, Icon">
+                </div>
+                <div style="display: flex; gap: 8px; margin-bottom: 10px;">
+                    <button onclick="createImagePlaceholder()" style="flex: 1;">+ Create</button>
+                </div>
+                <div id="imageList" style="max-height: 150px; overflow-y: auto; border: 1px solid var(--dark-border); border-radius: 4px; padding: 8px;">
+                    <div style="font-size: 11px; color: var(--dark-text-light); text-align: center; padding: 10px;">No images yet</div>
+                </div>
+                <div class="unlock-slider-wrapper" style="margin-top: 12px;">
+                    <input type="range" min="0" max="100" value="0" id="resetLibrarySlider" class="unlock-slider" onchange="updateResetLibraryButton()">
+                    <span class="unlock-label" id="resetLibraryLabel">Locked</span>
+                </div>
+                <button id="resetLibraryBtn" onclick="resetImageLibrary()" class="secondary danger-button-locked" style="width: 100%; background: var(--danger);">🗑️ Reset Library</button>
+            </div>
+
+            <div class="sidebar-section">
+                <h3>Elements</h3>
+                <div class="form-group">
+                    <label>Element Type</label>
+                    <select id="elementType" onchange="updateElementLabel()">
+                        <option value="button">Button</option>
+                        <option value="field">Text Field</option>
+                        <option value="toggle">Toggle</option>
+                        <option value="icon">Icon</option>
+                        <option value="text">Text Label</option>
+                    </select>
+                </div>
+                <div class="form-group">
+                    <label>Label (auto-generated)</label>
+                    <input type="text" id="elementLabel" placeholder="Auto" readonly style="background: var(--dark-surface); opacity: 0.8;">
+                </div>
+                <div class="form-group">
+                    <label>Image Placeholder (optional)</label>
+                    <select id="elementImage">
+                        <option value="">— None —</option>
+                    </select>
+                </div>
+                <div class="form-group">
+                    <label>Size (W×H cells)</label>
+                    <div style="display: flex; gap: 5px;">
+                        <input type="number" id="elementWidth" min="1" max="12" value="2" placeholder="W" style="flex: 1;">
+                        <input type="number" id="elementHeight" min="1" max="12" value="1" placeholder="H" style="flex: 1;">
+                    </div>
+                </div>
+                <button onclick="addElement()" style="width: 100%;">+ Add to Canvas</button>
+            </div>
+
+            <div class="sidebar-section">
+                <h3>Quick Add Element</h3>
+                <div class="form-group">
+                    <label>Select Type</label>
+                    <select id="quickElementType">
+                        <option value="">— Choose element —</option>
+                        <option value="button">🔘 Button</option>
+                        <option value="field">📝 Field</option>
+                        <option value="toggle">⚪ Toggle</option>
+                        <option value="icon">✨ Icon</option>
+                        <option value="image">🖼️ Image</option>
+                        <option value="text">📄 Text Label</option>
+                    </select>
+                </div>
+                <button onclick="addQuickElement()" style="width: 100%;">+ Add to Canvas</button>
+            </div>
+
+            <div class="sidebar-section">
+                <h3>Canvas Background</h3>
+                <div class="form-group">
+                    <label>Color</label>
+                    <div style="display: flex; gap: 5px;">
+                        <input type="color" id="bgColor" value="#ffffff" style="flex: 1; height: 36px; cursor: pointer;">
+                        <button onclick="updateCanvasBackground()" style="flex: 0 0 60px; background: var(--primary);">OK</button>
+                    </div>
+                </div>
+                <div style="display: flex; gap: 8px; flex-wrap: wrap; margin-top: 10px;">
+                    <button onclick="setCanvasBG('#ffffff')" style="flex: 1; min-width: 40px; height: 40px; background: #ffffff; border: 3px solid #666; border-radius: 6px; cursor: pointer; transition: all 0.2s;" title="White" onmouseover="this.style.border='3px solid #0066cc'" onmouseout="this.style.border='3px solid #666'"></button>
+                    <button onclick="setCanvasBG('#f5f5f5')" style="flex: 1; min-width: 40px; height: 40px; background: #f5f5f5; border: 3px solid #666; border-radius: 6px; cursor: pointer; transition: all 0.2s;" title="Light Gray" onmouseover="this.style.border='3px solid #0066cc'" onmouseout="this.style.border='3px solid #666'"></button>
+                    <button onclick="setCanvasBG('#fffacd')" style="flex: 1; min-width: 40px; height: 40px; background: #fffacd; border: 3px solid #666; border-radius: 6px; cursor: pointer; transition: all 0.2s;" title="Light Yellow" onmouseover="this.style.border='3px solid #0066cc'" onmouseout="this.style.border='3px solid #666'"></button>
+                    <button onclick="setCanvasBG('#ffe4e1')" style="flex: 1; min-width: 40px; height: 40px; background: #ffe4e1; border: 3px solid #666; border-radius: 6px; cursor: pointer; transition: all 0.2s;" title="Light Pink" onmouseover="this.style.border='3px solid #0066cc'" onmouseout="this.style.border='3px solid #666'"></button>
+                    <button onclick="setCanvasBG('#e0f7ff')" style="flex: 1; min-width: 40px; height: 40px; background: #e0f7ff; border: 3px solid #666; border-radius: 6px; cursor: pointer; transition: all 0.2s;" title="Light Blue" onmouseover="this.style.border='3px solid #0066cc'" onmouseout="this.style.border='3px solid #666'"></button>
+                    <button onclick="setCanvasBG('#e8f5e9')" style="flex: 1; min-width: 40px; height: 40px; background: #e8f5e9; border: 3px solid #666; border-radius: 6px; cursor: pointer; transition: all 0.2s;" title="Light Green" onmouseover="this.style.border='3px solid #0066cc'" onmouseout="this.style.border='3px solid #666'"></button>
+                </div>
+            </div>
+        </div>
+
+        <!-- Main content -->
+        <div class="main">
+            <!-- Toolbar -->
+            <div class="toolbar">
+                <button class="mobile-panel-toggle" onclick="toggleMobilePanel('sidebar')" aria-label="Open setup panel">☰</button>
+                <button class="mobile-panel-toggle" onclick="toggleMobilePanel('properties')" aria-label="Open properties panel">⚙️</button>
+                <button onclick="downloadTemplateCSV()">⬇️ Download Template</button>
+                <button onclick="document.getElementById('csvUploadInput').click()">⬆️ Upload CSV</button>
+                <button onclick="exportJSON()">⬇️ Export JSON</button>
+                <button onclick="exportHTML()">⬇️ Export HTML</button>
+                <button class="secondary" onclick="clearCanvas()">🗑️ Clear</button>
+                <div class="toolbar-spacer"></div>
+                <span class="toolbar-info" id="toolbarInfo">0 elements</span>
+            </div>
+
+            <!-- Canvas area -->
+            <div class="canvas-area">
+                <!-- Canvas center wrapper -->
+                <div class="canvas-center">
+                    <!-- Canvas -->
+                    <div class="canvas-container">
+                        <div class="canvas-label" id="canvasLabel">Canvas — Portrait</div>
+                        <div class="canvas-frame" id="canvasFrame">
+                            <div class="grid" id="grid"></div>
+                        </div>
+                    </div>
+                </div>
+
+                <!-- Properties panel -->
+                <div class="properties-panel">
+                    <div class="properties-header">Properties</div>
+                    <div class="properties-content" id="propertiesContent">
+                        <div class="empty-state">Select an element to view properties</div>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <input type="file" id="uploadInput" accept="image/*,.svg" onchange="handleImageUpload(event)">
+    <input type="file" id="csvUploadInput" accept=".csv" onchange="handleCSVUpload(event)">
+
+    <script>
+        let canvasWidth = 6; // columns
+        let canvasHeight = 12; // rows
+        let cellSize = 50; // pixels
+        let gridColor = '#4CAF50'; // green
+        let elements = [];
+        let selectedElement = null;
+        let nextElementId = 1;
+        let pages = [];
+        let currentPageIndex = -1;
+        let imageLibrary = []; // Reusable image placeholders
+        let nextImageId = 1;
+        let nextInstanceId = 1; // Global instance counter (never resets)
+        let instanceRegistry = []; // Master registry of all instances
+
+        const ELEMENT_TYPES = {
+            button: { icon: '🔘', color: '#2196f3' },
+            field: { icon: '📝', color: '#ff9800' },
+            toggle: { icon: '⚪', color: '#4caf50' },
+            icon: { icon: '✨', color: '#9c27b0' },
+            image: { icon: '🖼️', color: '#f44336' },
+            text: { icon: '📄', color: '#607d8b' }
+        };
+
+        const ACTIONS = [
+            'Jump to page',
+            'Show dropdown',
+            'Open modal',
+            'Download file',
+            'Toggle reference',
+            'Scroll/pan',
+            'Custom'
+        ];
+
+        function init() {
+            // Load saved project if exists
+            const saved = localStorage.getItem('mavisProject');
+            if (saved) {
+                const project = JSON.parse(saved);
+                pages = project.pages || [];
+                currentPageIndex = project.currentPageIndex || -1;
+                instanceRegistry = project.instanceRegistry || [];
+                nextInstanceId = project.nextInstanceId || 1;
+                imageLibrary = project.imageLibrary || [];
+                nextImageId = project.nextImageId || 1;
+                document.getElementById('projectName').value = project.name || 'Untitled Project';
+                updatePageSelector();
+                if (currentPageIndex >= 0 && pages.length > 0) {
+                    loadPageData(currentPageIndex);
+                }
+            }
+
+            populateElementLibrary();
+            setupEventListeners();
+            if ('serviceWorker' in navigator) {
+                window.addEventListener('load', () => navigator.serviceWorker.register('./service-worker.js').catch(console.warn));
+            }
+            updateElementLabel();
+            // Delay grid init until DOM is fully rendered
+            setTimeout(() => {
+                initializeGrid();
+            }, 100);
+        }
+
+        function savePageSettings() {
+            if (currentPageIndex < 0 || currentPageIndex >= pages.length) {
+                showMessage('No page loaded', 'error');
+                return;
+            }
+
+            const pageName = document.getElementById('pageName').value;
+            const orientation = document.getElementById('orientation').value;
+            const zone = document.getElementById('pageZone').value;
+            const gridWidth = parseInt(document.getElementById('gridWidth').value);
+            const gridHeight = parseInt(document.getElementById('gridHeight').value);
+            const bgColor = document.getElementById('bgColor').value;
+
+            if (!pageName.trim()) {
+                showMessage('Page name is required', 'error');
+                return;
+            }
+
+            const page = pages[currentPageIndex];
+            page.name = pageName;
+            page.orientation = orientation;
+            page.zone = zone;
+            page.gridWidth = gridWidth;
+            page.gridHeight = gridHeight;
+            page.elements = elements;
+            page.bgColor = bgColor;
+
+            updatePageSelector();
+            showMessage(`✓ Page saved: "${pageName}"`, 'success');
+        }
+
+        let gridZoom = 1;
+
+        function initializeGrid() {
+            const grid = document.getElementById('grid');
+            const frame = document.getElementById('canvasFrame');
+            if (!grid || !frame) return;
+
+            grid.innerHTML = '';
+            gridZoom = 1;
+
+            // Calculate cell size to fit entire grid in canvas with padding
+            const frameWidth = frame.offsetWidth - 20;
+            const frameHeight = frame.offsetHeight - 20;
+            const cellWidthFit = frameWidth / canvasWidth;
+            const cellHeightFit = frameHeight / canvasHeight;
+            cellSize = Math.floor(Math.min(cellWidthFit, cellHeightFit));
+
+            // Update grid background with current color
+            const rgb = hexToRgb(gridColor);
+            const gridBg = `linear-gradient(rgba(${rgb.r}, ${rgb.g}, ${rgb.b}, 0.5) 1px, transparent 1px), linear-gradient(90deg, rgba(${rgb.r}, ${rgb.g}, ${rgb.b}, 0.5) 1px, transparent 1px)`;
+            grid.style.backgroundImage = gridBg;
+            grid.style.backgroundSize = cellSize + 'px ' + cellSize + 'px';
+
+            const gridWidth = canvasWidth * cellSize;
+            const gridHeight = canvasHeight * cellSize;
+            grid.style.width = gridWidth + 'px';
+            grid.style.height = gridHeight + 'px';
+
+            // Create grid cells
+            for (let row = 0; row < canvasHeight; row++) {
+                for (let col = 0; col < canvasWidth; col++) {
+                    const cell = document.createElement('div');
+                    cell.className = 'grid-cell';
+                    cell.style.left = (col * cellSize) + 'px';
+                    cell.style.top = (row * cellSize) + 'px';
+                    cell.style.width = cellSize + 'px';
+                    cell.style.height = cellSize + 'px';
+                    grid.appendChild(cell);
+                }
+            }
+        }
+
+        function populateElementLibrary() {
+            // Element library now uses dropdown instead of expandable list
+        }
+
+        function addQuickElement() {
+            const type = document.getElementById('quickElementType').value;
+            if (!type) {
+                showMessage('Please select an element type', 'error');
+                return;
+            }
+
+            const label = type.charAt(0).toUpperCase() + type.slice(1);
+            const element = {
+                id: nextElementId++,
+                type,
+                label,
+                width: 2,
+                height: 1,
+                x: 0,
+                y: 0,
+                action: 'Jump to page',
+                actionValue: '1',
+                image: null
+            };
+
+            elements.push(element);
+            renderElements();
+            updateToolbar();
+            document.getElementById('quickElementType').value = '';
+            showMessage(`${label} added to canvas`, 'success');
+        }
+
+        function setCanvasBG(color) {
+            document.getElementById('bgColor').value = color;
+            updateCanvasBackground();
+        }
+
+        function updateCanvasBackground() {
+            const color = document.getElementById('bgColor').value;
+            document.getElementById('canvasFrame').style.backgroundColor = color;
+            showMessage(`Canvas background: ${color}`, 'success');
+        }
+
+        function updateGridColor() {
+            const color = document.getElementById('gridColor').value;
+            gridColor = color;
+            const rgb = hexToRgb(color);
+            const gridBg = `linear-gradient(rgba(${rgb.r}, ${rgb.g}, ${rgb.b}, 0.5) 1px, transparent 1px), linear-gradient(90deg, rgba(${rgb.r}, ${rgb.g}, ${rgb.b}, 0.5) 1px, transparent 1px)`;
+            const grid = document.getElementById('grid');
+            grid.style.backgroundImage = gridBg;
+            grid.style.backgroundSize = cellSize + 'px ' + cellSize + 'px';
+            showMessage(`Grid color updated`, 'success');
+        }
+
+        function hexToRgb(hex) {
+            const result = /^#?([a-f\d]{2})([a-f\d]{2})([a-f\d]{2})$/i.exec(hex);
+            return result ? {
+                r: parseInt(result[1], 16),
+                g: parseInt(result[2], 16),
+                b: parseInt(result[3], 16)
+            } : { r: 76, g: 175, b: 80 };
+        }
+
+        function updateGridOptions() {
+            const orientation = document.getElementById('orientation').value;
+            if (orientation === 'portrait') {
+                document.getElementById('gridWidth').value = '6';
+                document.getElementById('gridHeight').value = '12';
+            } else {
+                document.getElementById('gridWidth').value = '12';
+                document.getElementById('gridHeight').value = '8';
+            }
+            // Both max at 48
+            document.getElementById('gridWidth').max = '48';
+            document.getElementById('gridHeight').max = '48';
+            validateGridSize();
+        }
+
+        function validateGridSize() {
+            const width = parseInt(document.getElementById('gridWidth').value) || 0;
+            const height = parseInt(document.getElementById('gridHeight').value) || 0;
+            const orientation = document.getElementById('orientation').value;
+            const validation = document.getElementById('gridValidation');
+
+            let isValid = true;
+            let message = '';
+
+            // Check valid range
+            if (width < 1 || height < 1 || width > 48 || height > 48) {
+                isValid = false;
+                message = 'Range: 1-48';
+            }
+            // Portrait: width must be <= height
+            else if (orientation === 'portrait' && width > height) {
+                isValid = false;
+                message = 'Portrait: width ≤ height';
+            }
+            // Landscape: width must be >= height
+            else if (orientation === 'landscape' && width < height) {
+                isValid = false;
+                message = 'Landscape: width ≥ height';
+            }
+            else if (width === height) {
+                message = '⚠ Square grid';
+            }
+
+            validation.textContent = message;
+            validation.style.color = isValid ? 'var(--dark-text-light)' : 'var(--danger)';
+
+            if (isValid) {
+                canvasWidth = width;
+                canvasHeight = height;
+                initializeGrid();
+            }
+        }
+
+        function toggleMobilePanel(panel) {
+            if (window.innerWidth > 768) return;
+            const sidebar = document.querySelector('.sidebar');
+            const properties = document.querySelector('.properties-panel');
+            const target = panel === 'properties' ? properties : sidebar;
+            const other = panel === 'properties' ? sidebar : properties;
+            other.classList.remove('mobile-open');
+            target.classList.toggle('mobile-open');
+        }
+
+        function closeMobilePanels() {
+            document.querySelector('.sidebar')?.classList.remove('mobile-open');
+            document.querySelector('.properties-panel')?.classList.remove('mobile-open');
+        }
+
+        function setupEventListeners() {
+            document.getElementById('orientation').addEventListener('change', (e) => {
+                const container = document.querySelector('.canvas-container');
+                updateGridOptions();
+                if (e.target.value === 'portrait') {
+                    document.getElementById('canvasLabel').textContent = 'Canvas — Portrait';
+                    container.classList.remove('landscape');
+                } else {
+                    document.getElementById('canvasLabel').textContent = 'Canvas — Landscape';
+                    container.classList.add('landscape');
+                }
+            });
+
+            document.getElementById('gridWidth').addEventListener('change', validateGridSize);
+            document.getElementById('gridHeight').addEventListener('change', validateGridSize);
+
+            document.getElementById('gridColor').addEventListener('change', updateGridColor);
+            document.getElementById('gridColor').addEventListener('input', updateGridColor);
+            document.getElementById('bgColor').addEventListener('change', updateCanvasBackground);
+            document.getElementById('bgColor').addEventListener('input', updateCanvasBackground);
+
+            // Zoom with mouse wheel
+            document.getElementById('canvasFrame').addEventListener('wheel', (e) => {
+                if (e.ctrlKey || e.metaKey) {
+                    e.preventDefault();
+                    const grid = document.getElementById('grid');
+                    const delta = e.deltaY > 0 ? 0.9 : 1.1;
+                    gridZoom *= delta;
+                    gridZoom = Math.max(0.5, Math.min(3, gridZoom));
+                    grid.style.transform = `scale(${gridZoom})`;
+                }
+            });
+
+            // Pinch zoom on touch
+            let lastDistance = 0;
+            document.getElementById('canvasFrame').addEventListener('touchmove', (e) => {
+                if (e.touches.length === 2) {
+                    e.preventDefault();
+                    const touch1 = e.touches[0];
+                    const touch2 = e.touches[1];
+                    const distance = Math.hypot(touch2.clientX - touch1.clientX, touch2.clientY - touch1.clientY);
+
+                    if (lastDistance) {
+                        const delta = distance / lastDistance;
+                        const grid = document.getElementById('grid');
+                        gridZoom *= delta;
+                        gridZoom = Math.max(0.5, Math.min(3, gridZoom));
+                        grid.style.transform = `scale(${gridZoom})`;
+                    }
+                    lastDistance = distance;
+                }
+            }, { passive: false });
+
+            document.getElementById('canvasFrame').addEventListener('touchend', () => {
+                lastDistance = 0;
+            });
+
+            document.getElementById('canvasFrame').addEventListener('pointerdown', (e) => {
+                if (e.target.id === 'canvasFrame' || e.target.id === 'grid') closeMobilePanels();
+            });
+
+            document.addEventListener('dragstart', (e) => {
+                if (e.target.classList.contains('element-item')) {
+                    e.dataTransfer.effectAllowed = 'copy';
+                    e.dataTransfer.setData('elementType', e.target.dataset.type);
+                }
+            });
+
+            document.getElementById('grid').addEventListener('dragover', (e) => {
+                e.preventDefault();
+                e.dataTransfer.dropEffect = 'copy';
+            });
+
+            document.getElementById('grid').addEventListener('drop', (e) => {
+                e.preventDefault();
+                const type = e.dataTransfer.getData('elementType');
+                if (type) {
+                    const rect = document.getElementById('grid').getBoundingClientRect();
+                    const x = e.clientX - rect.left;
+                    const y = e.clientY - rect.top;
+                    createElementAtPosition(type, x, y);
+                }
+            });
+        }
+
+        function updateElementLabel() {
+            const type = document.getElementById('elementType').value;
+            const count = elements.filter(e => e.type === type).length + 1;
+            const label = `${type} ${count}`;
+            document.getElementById('elementLabel').value = label;
+        }
+
+        function addElement() {
+            const type = document.getElementById('elementType').value;
+            const label = document.getElementById('elementLabel').value;
+            const width = parseInt(document.getElementById('elementWidth').value) || 2;
+            const height = parseInt(document.getElementById('elementHeight').value) || 1;
+            const imageId = document.getElementById('elementImage').value || null;
+
+            // Assign global instance ID and calculate z-index
+            const instanceId = nextInstanceId++;
+            const baseName = label.replace(/\s+\d+$/, ''); // Remove trailing number for registry
+            const currentMaxZ = elements.length > 0 ? Math.max(...elements.map(e => e.zIndex || 0)) : 2;
+            const zIndex = currentMaxZ + 1;
+
+            const element = {
+                id: nextElementId++,
+                type,
+                label,
+                width,
+                height,
+                x: 0,
+                y: 0,
+                action: 'Jump to page',
+                actionValue: '1',
+                imageId: imageId ? parseInt(imageId) : null,
+                instanceId: instanceId,
+                zIndex: zIndex,
+                createdAt: new Date().toISOString(),
+                status: 'active'
+            };
+
+            // Register instance
+            instanceRegistry.push({
+                instanceId: instanceId,
+                type: type,
+                baseName: baseName,
+                createdAt: new Date().toISOString(),
+                status: 'active',
+                deletedAt: null
+            });
+
+            elements.push(element);
+            renderElements();
+            updateToolbar();
+            updateElementLabel(); // Reset label for next element
+            showMessage(`Element added: ${label} (${instanceId})`, 'success');
+        }
+
+        function createImagePlaceholder() {
+            const baseName = document.getElementById('imageName').value.trim();
+            if (!baseName) {
+                showMessage('Image name required', 'error');
+                return;
+            }
+
+            // Count existing images with same base name to generate ordinal
+            const sameNameCount = imageLibrary.filter(img => {
+                const name = img.name.replace(/\s+\d+$/, ''); // Strip trailing number
+                return name.toLowerCase() === baseName.toLowerCase();
+            }).length;
+
+            const ordinal = sameNameCount + 1;
+            const fullName = `${baseName} ${ordinal}`;
+
+            const image = {
+                id: nextImageId++,
+                baseName: baseName,
+                ordinal: ordinal,
+                name: fullName,
+                data: null
+            };
+
+            imageLibrary.push(image);
+            document.getElementById('imageName').value = '';
+            updateImageLibraryUI();
+            updateElementImageSelector();
+            showMessage(`Image created: "${fullName}"`, 'success');
+        }
+
+        function resetImageLibrary() {
+            const slider = document.getElementById('resetLibrarySlider');
+            if (parseInt(slider.value) < 100) {
+                showMessage('Unlock slider to reset library', 'error');
+                return;
+            }
+
+            if (confirm('Reset all images? This will remove all image placeholders and clear them from elements.')) {
+                elements.forEach(elem => elem.imageId = null);
+                imageLibrary = [];
+                nextImageId = 1;
+                slider.value = 0;
+                document.getElementById('resetLibraryLabel').textContent = 'Locked';
+                document.getElementById('resetLibraryBtn').classList.add('danger-button-locked');
+                updateImageLibraryUI();
+                updateElementImageSelector();
+                renderElements();
+                showMessage('Image library reset', 'success');
+            }
+        }
+
+        function updateDeletePageButton() {
+            const slider = document.getElementById('deletePageSlider');
+            const btn = document.getElementById('deletePageBtn');
+            const label = document.getElementById('deletePageLabel');
+
+            if (parseInt(slider.value) >= 100) {
+                btn.classList.remove('danger-button-locked');
+                label.textContent = 'Unlocked ✓';
+            } else {
+                btn.classList.add('danger-button-locked');
+                label.textContent = 'Locked';
+            }
+        }
+
+        function updateResetLibraryButton() {
+            const slider = document.getElementById('resetLibrarySlider');
+            const btn = document.getElementById('resetLibraryBtn');
+            const label = document.getElementById('resetLibraryLabel');
+
+            if (parseInt(slider.value) >= 100) {
+                btn.classList.remove('danger-button-locked');
+                label.textContent = 'Unlocked ✓';
+            } else {
+                btn.classList.add('danger-button-locked');
+                label.textContent = 'Locked';
+            }
+        }
+
+        function deleteImagePlaceholder(id) {
+            const image = imageLibrary.find(img => img.id === id);
+            if (!image) return;
+
+            if (confirm(`Delete image: "${image.name}"?`)) {
+                imageLibrary = imageLibrary.filter(img => img.id !== id);
+                elements.forEach(elem => {
+                    if (elem.imageId === id) elem.imageId = null;
+                });
+                updateImageLibraryUI();
+                updateElementImageSelector();
+                renderElements();
+                showMessage('Image deleted', 'success');
+            }
+        }
+
+        function uploadImageData(imageId) {
+            const fileInput = document.createElement('input');
+            fileInput.type = 'file';
+            fileInput.accept = 'image/*,.svg';
+            fileInput.onchange = (e) => {
+                const file = e.target.files[0];
+                if (!file) return;
+
+                const reader = new FileReader();
+                reader.onload = (event) => {
+                    const image = imageLibrary.find(img => img.id === imageId);
+                    if (image) {
+                        image.data = event.target.result;
+                        updateImageLibraryUI();
+                        renderElements();
+                        showMessage('Image uploaded', 'success');
+                    }
+                };
+                reader.readAsDataURL(file);
+            };
+            fileInput.click();
+        }
+
+        function updateImageLibraryUI() {
+            const list = document.getElementById('imageList');
+            if (imageLibrary.length === 0) {
+                list.innerHTML = '<div style="font-size: 11px; color: var(--dark-text-light); text-align: center; padding: 10px;">No images yet</div>';
+                return;
+            }
+
+            list.innerHTML = imageLibrary.map(img => `
+                <div style="display: flex; gap: 6px; padding: 6px; border-bottom: 1px solid var(--dark-border); align-items: center; justify-content: space-between;">
+                    <div style="flex: 1; font-size: 11px;">
+                        <div style="color: var(--dark-text);">${img.name}</div>
+                        <div style="color: var(--dark-text-light); font-size: 10px;">${img.data ? '✓ Image' : '○ Empty'}</div>
+                    </div>
+                    <button onclick="uploadImageData(${img.id})" style="padding: 4px 8px; font-size: 10px; background: #555; color: white; border: none; border-radius: 3px; cursor: pointer;">📤</button>
+                    <button onclick="deleteImagePlaceholder(${img.id})" style="padding: 4px 8px; font-size: 10px; background: var(--danger); color: white; border: none; border-radius: 3px; cursor: pointer;">✕</button>
+                </div>
+            `).join('');
+        }
+
+        function updateElementImageSelector() {
+            const selector = document.getElementById('elementImage');
+            const currentValue = selector.value;
+            selector.innerHTML = '<option value="">— None —</option>';
+
+            imageLibrary.forEach(img => {
+                const option = document.createElement('option');
+                option.value = img.id;
+                option.textContent = img.name + (img.data ? ' ✓' : '');
+                selector.appendChild(option);
+            });
+
+            if (currentValue) selector.value = currentValue;
+        }
+
+        function createElementAtPosition(type, x, y) {
+            const col = Math.floor(x / cellSize);
+            const row = Math.floor(y / cellSize);
+
+            const element = {
+                id: nextElementId++,
+                type,
+                label: type,
+                width: 2,
+                height: 1,
+                x: col,
+                y: row,
+                action: 'Jump to page',
+                actionValue: '1',
+                image: null
+            };
+
+            elements.push(element);
+            renderElements();
+            updateToolbar();
+        }
+
+        function renderElements() {
+            const grid = document.getElementById('grid');
+
+            // Remove existing elements
+            document.querySelectorAll('.canvas-element').forEach(el => el.remove());
+
+            // Sort by z-index to render in correct order
+            const sortedElements = [...elements].sort((a, b) => (a.zIndex || 0) - (b.zIndex || 0));
+
+            sortedElements.forEach(elem => {
+                const el = document.createElement('div');
+                el.className = 'canvas-element';
+                if (selectedElement?.id === elem.id) el.classList.add('selected');
+
+                const left = elem.x * cellSize;
+                const top = elem.y * cellSize;
+                const width = elem.width * cellSize;
+                const height = elem.height * cellSize;
+
+                el.style.left = left + 'px';
+                el.style.top = top + 'px';
+                el.style.width = width + 'px';
+                el.style.height = height + 'px';
+                el.style.zIndex = elem.zIndex || 0;
+
+                // Show instance ID in corner
+                const instanceLabel = elem.instanceId ? `<span style="position: absolute; top: 2px; right: 2px; font-size: 9px; background: rgba(0,0,0,0.5); color: white; padding: 2px 4px; border-radius: 2px;">${elem.instanceId}</span>` : '';
+
+                if (elem.imageId) {
+                    const image = imageLibrary.find(img => img.id === elem.imageId);
+                    if (image && image.data) {
+                        el.innerHTML = `<img src="${image.data}" alt="${elem.label}">${instanceLabel}`;
+                    } else {
+                        const data = ELEMENT_TYPES[elem.type];
+                        el.innerHTML = `${data.icon} ${elem.label}${instanceLabel}`;
+                        el.style.borderColor = data.color;
+                    }
+                } else {
+                    const data = ELEMENT_TYPES[elem.type];
+                    el.innerHTML = `${data.icon} ${elem.label}${instanceLabel}`;
+                    el.style.borderColor = data.color;
+                }
+
+                el.addEventListener('click', () => selectElement(elem));
+                el.addEventListener('pointerdown', (e) => startPointerDrag(e, elem, el));
+
+                grid.appendChild(el);
+            });
+        }
+
+        function selectElement(elem) {
+            selectedElement = elem;
+            renderElements();
+            showProperties();
+        }
+
+        function startPointerDrag(e, elem, elementNode) {
+            if (!e.isPrimary) return;
+            e.preventDefault();
+            e.stopPropagation();
+
+            selectedElement = elem;
+            document.querySelectorAll('.canvas-element').forEach(node => node.classList.remove('selected'));
+            elementNode.classList.add('selected');
+            showProperties();
+            const activePointerId = e.pointerId;
+            const startClientX = e.clientX;
+            const startClientY = e.clientY;
+            const startLeft = elem.x * cellSize;
+            const startTop = elem.y * cellSize;
+            const maxLeft = Math.max(0, (canvasWidth - elem.width) * cellSize);
+            const maxTop = Math.max(0, (canvasHeight - elem.height) * cellSize);
+            let currentLeft = startLeft;
+            let currentTop = startTop;
+            let moved = false;
+
+            elementNode.setPointerCapture(activePointerId);
+
+            const onPointerMove = (moveEvent) => {
+                if (moveEvent.pointerId !== activePointerId) return;
+                moveEvent.preventDefault();
+
+                const deltaX = (moveEvent.clientX - startClientX) / gridZoom;
+                const deltaY = (moveEvent.clientY - startClientY) / gridZoom;
+                currentLeft = Math.max(0, Math.min(maxLeft, startLeft + deltaX));
+                currentTop = Math.max(0, Math.min(maxTop, startTop + deltaY));
+                moved = moved || Math.abs(deltaX) > 2 || Math.abs(deltaY) > 2;
+
+                elementNode.style.left = currentLeft + 'px';
+                elementNode.style.top = currentTop + 'px';
+            };
+
+            const finishPointer = (endEvent) => {
+                if (endEvent.pointerId !== activePointerId) return;
+                if (elementNode.hasPointerCapture(activePointerId)) {
+                    elementNode.releasePointerCapture(activePointerId);
+                }
+                elementNode.removeEventListener('pointermove', onPointerMove);
+                elementNode.removeEventListener('pointerup', finishPointer);
+                elementNode.removeEventListener('pointercancel', finishPointer);
+
+                if (moved) {
+                    elem.x = Math.max(0, Math.min(canvasWidth - elem.width, Math.round(currentLeft / cellSize)));
+                    elem.y = Math.max(0, Math.min(canvasHeight - elem.height, Math.round(currentTop / cellSize)));
+                    renderElements();
+                    persistProject(false);
+                }
+            };
+
+            elementNode.addEventListener('pointermove', onPointerMove);
+            elementNode.addEventListener('pointerup', finishPointer);
+            elementNode.addEventListener('pointercancel', finishPointer);
+        }
+
+        function showProperties() {
+            const panel = document.getElementById('propertiesContent');
+            if (!selectedElement) {
+                panel.innerHTML = '<div class="empty-state">Select an element to view properties</div>';
+                return;
+            }
+
+            const elem = selectedElement;
+            panel.innerHTML = `
+                <div class="property-group">
+                    <label class="property-label">Type</label>
+                    <div class="property-value">${elem.type}</div>
+                </div>
+                <div class="property-group">
+                    <label class="property-label">Position</label>
+                    <div class="property-value">Col ${elem.x + 1}, Row ${elem.y + 1}</div>
+                </div>
+                <div class="property-group">
+                    <label class="property-label">Size</label>
+                    <div class="property-value">${elem.width}×${elem.height} cells</div>
+                </div>
+                <div class="property-group">
+                    <label class="property-label">Label</label>
+                    <input type="text" value="${elem.label}" onchange="selectedElement.label = this.value; renderElements();">
+                </div>
+                <div class="property-group">
+                    <label class="property-label">Action</label>
+                    <select onchange="selectedElement.action = this.value;">
+                        ${ACTIONS.map(a => `<option ${a === elem.action ? 'selected' : ''}>${a}</option>`).join('')}
+                    </select>
+                </div>
+                <div class="property-group">
+                    <label class="property-label">Action Value</label>
+                    <input type="text" value="${elem.actionValue}" onchange="selectedElement.actionValue = this.value;">
+                </div>
+                <div class="property-group">
+                    <label class="property-label">Image Placeholder</label>
+                    <select onchange="selectedElement.imageId = this.value ? parseInt(this.value) : null; renderElements();" style="width: 100%; padding: 10px 12px; border: 2px solid var(--dark-border); border-radius: 4px; font-size: 13px; font-family: inherit; line-height: 1.4; background: var(--dark-surface); color: var(--dark-text);">
+                        <option value="">— None —</option>
+                        ${imageLibrary.map(img => `<option value="${img.id}" ${elem.imageId === img.id ? 'selected' : ''}>${img.name}</option>`).join('')}
+                    </select>
+                </div>
+                <div class="property-group">
+                    <label class="property-label">Layer (Z-Index: ${elem.zIndex || 0})</label>
+                    <div style="display: flex; gap: 8px;">
+                        <button onclick="sendToBack(${elem.id})" style="flex: 1; background: #555; color: white; border: none; padding: 8px; border-radius: 3px; cursor: pointer; font-size: 12px;">↓ To Back</button>
+                        <button onclick="bringToFront(${elem.id})" style="flex: 1; background: #555; color: white; border: none; padding: 8px; border-radius: 3px; cursor: pointer; font-size: 12px;">↑ To Front</button>
+                    </div>
+                </div>
+                <div class="property-group">
+                    <button onclick="deleteElement(${elem.id})" class="danger" style="width: 100%; background: var(--danger); color: white; border: none; padding: 8px; border-radius: 3px; cursor: pointer;">🗑️ Delete</button>
+                </div>
+            `;
+        }
+
+        function deleteElement(id) {
+            const element = elements.find(e => e.id === id);
+            if (element && element.instanceId) {
+                // Mark instance as DELETED in registry
+                const registryEntry = instanceRegistry.find(r => r.instanceId === element.instanceId);
+                if (registryEntry) {
+                    registryEntry.status = 'DELETED';
+                    registryEntry.deletedAt = new Date().toISOString();
+                }
+            }
+            elements = elements.filter(e => e.id !== id);
+            selectedElement = null;
+            renderElements();
+            showProperties();
+            updateToolbar();
+        }
+
+        function sendToBack(id) {
+            const element = elements.find(e => e.id === id);
+            if (!element) return;
+
+            const minZ = Math.min(...elements.map(e => e.zIndex || 0));
+            element.zIndex = minZ - 1;
+            renderElements();
+            showProperties();
+        }
+
+        function bringToFront(id) {
+            const element = elements.find(e => e.id === id);
+            if (!element) return;
+
+            const maxZ = Math.max(...elements.map(e => e.zIndex || 0));
+            element.zIndex = maxZ + 1;
+            renderElements();
+            showProperties();
+        }
+
+        function handleImageUpload(event) {
+            if (!selectedElement) return;
+            const file = event.target.files[0];
+            const reader = new FileReader();
+            reader.onload = (e) => {
+                selectedElement.image = e.target.result;
+                renderElements();
+                showProperties();
+            };
+            reader.readAsDataURL(file);
+        }
+
+        function downloadTemplateCSV() {
+            let csv = 'Element Type,Label,Width,Height,X,Y,Action,Action Value\n';
+
+            if (elements.length === 0) {
+                csv += 'button,"Submit",2,1,0,0,"Jump to page","2"\n';
+                csv += 'field,"Email",3,1,2,1,"Custom",""\n';
+                csv += 'text,"Welcome Message",4,2,0,3,"",""\n';
+            } else {
+                csv += elements.map(e =>
+                    `"${e.type}","${e.label}",${e.width},${e.height},${e.x},${e.y},"${e.action}","${e.actionValue}"`
+                ).join('\n');
+            }
+
+            const blob = new Blob([csv], { type: 'text/csv;charset=utf-8;' });
+            const url = URL.createObjectURL(blob);
+            const a = document.createElement('a');
+            a.href = url;
+            a.download = `canvas-elements-${new Date().toISOString().split('T')[0]}.csv`;
+            a.click();
+            URL.revokeObjectURL(url);
+            showMessage('CSV template downloaded!', 'success');
+        }
+
+        function handleCSVUpload(event) {
+            const file = event.target.files[0];
+            if (!file) return;
+
+            const reader = new FileReader();
+            reader.onload = function(e) {
+                const text = e.target.result;
+                try {
+                    const lines = text.split('\n').map(l => l.trim()).filter(l => l);
+                    if (lines.length < 2) throw new Error('CSV must have header and data rows');
+
+                    const header = parseCSVLine(lines[0]);
+                    const headerLower = header.map(h => h.toLowerCase());
+
+                    const typeIdx = headerLower.indexOf('element type');
+                    const labelIdx = headerLower.indexOf('label');
+                    const widthIdx = headerLower.indexOf('width');
+                    const heightIdx = headerLower.indexOf('height');
+                    const xIdx = headerLower.indexOf('x');
+                    const yIdx = headerLower.indexOf('y');
+                    const actionIdx = headerLower.indexOf('action');
+                    const actionValueIdx = headerLower.indexOf('action value');
+
+                    if (typeIdx === -1 || labelIdx === -1) {
+                        throw new Error('CSV must have "Element Type" and "Label" columns');
+                    }
+
+                    elements = [];
+                    for (let i = 1; i < lines.length; i++) {
+                        const parts = parseCSVLine(lines[i]);
+                        if (parts.every(p => !p)) continue;
+
+                        const type = parts[typeIdx]?.trim() || 'button';
+                        if (!ELEMENT_TYPES[type]) {
+                            throw new Error(`Invalid element type at row ${i + 1}: "${type}"`);
+                        }
+
+                        elements.push({
+                            id: nextElementId++,
+                            type: type,
+                            label: parts[labelIdx]?.trim() || 'Element',
+                            width: parseInt(parts[widthIdx]) || 2,
+                            height: parseInt(parts[heightIdx]) || 1,
+                            x: parseInt(parts[xIdx]) || 0,
+                            y: parseInt(parts[yIdx]) || 0,
+                            action: parts[actionIdx]?.trim() || 'Jump to page',
+                            actionValue: parts[actionValueIdx]?.trim() || '1',
+                            image: null
+                        });
+                    }
+
+                    renderElements();
+                    updateToolbar();
+                    selectedElement = null;
+                    showProperties();
+                    showMessage(`✓ Loaded ${elements.length} elements from CSV!`, 'success');
+                } catch (error) {
+                    showMessage(`Error: ${error.message}`, 'error');
+                }
+            };
+            reader.readAsText(file);
+            event.target.value = '';
+        }
+
+        function parseCSVLine(line) {
+            const result = [];
+            let current = '';
+            let inQuotes = false;
+
+            for (let i = 0; i < line.length; i++) {
+                const char = line[i];
+                const nextChar = line[i + 1];
+
+                if (char === '"') {
+                    if (inQuotes && nextChar === '"') {
+                        current += '"';
+                        i++;
+                    } else {
+                        inQuotes = !inQuotes;
+                    }
+                } else if (char === ',' && !inQuotes) {
+                    result.push(current.trim());
+                    current = '';
+                } else {
+                    current += char;
+                }
+            }
+
+            result.push(current.trim());
+            return result;
+        }
+
+        function exportJSON() {
+            const data = {
+                page: document.getElementById('pageName').value,
+                orientation: document.getElementById('orientation').value,
+                zone: document.getElementById('pageZone').value,
+                gridSize: { width: canvasWidth, height: canvasHeight },
+                elements: elements
+            };
+
+            const json = JSON.stringify(data, null, 2);
+            const blob = new Blob([json], { type: 'application/json' });
+            const url = URL.createObjectURL(blob);
+            const a = document.createElement('a');
+            a.href = url;
+            a.download = `canvas-${Date.now()}.json`;
+            a.click();
+            URL.revokeObjectURL(url);
+            showMessage('JSON exported!', 'success');
+        }
+
+        function exportHTML() {
+            const html = `<!DOCTYPE html>
+<html>
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>${document.getElementById('pageName').value}</title>
+    <style>
+        body { margin: 0; padding: 20px; font-family: system-ui, sans-serif; background: #f5f5f5; }
+        .container { max-width: 600px; margin: 0 auto; background: white; padding: 20px; border-radius: 8px; }
+        h1 { font-size: 24px; margin-bottom: 10px; }
+        .meta { font-size: 12px; color: #666; margin-bottom: 20px; }
+        .grid { display: grid; gap: 10px; }
+        .element { padding: 12px; border: 2px solid #0066cc; border-radius: 4px; background: #f9f9f9; }
+        .element-label { font-weight: 600; margin-bottom: 4px; }
+        .element-action { font-size: 11px; color: #666; }
+    </style>
+</head>
+<body>
+    <div class="container">
+        <h1>${document.getElementById('pageName').value}</h1>
+        <div class="meta">
+            <strong>Zone:</strong> ${document.getElementById('pageZone').value} |
+            <strong>Orientation:</strong> ${document.getElementById('orientation').value} |
+            <strong>Elements:</strong> ${elements.length}
+        </div>
+        <div class="grid">
+            ${elements.map(e => `
+                <div class="element">
+                    <div class="element-label">${e.label}</div>
+                    <div class="element-action">→ ${e.action}: ${e.actionValue}</div>
+                </div>
+            `).join('')}
+        </div>
+    </div>
+</body>
+</html>`;
+
+            const blob = new Blob([html], { type: 'text/html' });
+            const url = URL.createObjectURL(blob);
+            const a = document.createElement('a');
+            a.href = url;
+            a.download = `canvas-${Date.now()}.html`;
+            a.click();
+            URL.revokeObjectURL(url);
+            showMessage('HTML exported!', 'success');
+        }
+
+        function updateToolbar() {
+            document.getElementById('toolbarInfo').textContent = `${elements.length} element${elements.length !== 1 ? 's' : ''}`;
+        }
+
+        function clearCanvas() {
+            if (confirm('Clear all elements?')) {
+                elements = [];
+                selectedElement = null;
+                renderElements();
+                showProperties();
+                updateToolbar();
+                showMessage('Canvas cleared', 'success');
+            }
+        }
+
+        function showMessage(text, type) {
+            const msg = document.createElement('div');
+            msg.className = `message ${type}`;
+            msg.textContent = text;
+            document.body.appendChild(msg);
+            setTimeout(() => msg.remove(), 2500);
+        }
+
+        // Page Management Functions
+        function createNewPage() {
+            const newPage = {
+                id: Date.now(),
+                num: pages.length + 1,
+                name: `Page ${pages.length + 1}`,
+                orientation: 'portrait',
+                zone: 'YELLOW',
+                gridWidth: 6,
+                gridHeight: 12,
+                elements: [],
+                bgColor: '#ffffff'
+            };
+            pages.push(newPage);
+            currentPageIndex = pages.length - 1;
+            loadPageData(currentPageIndex);
+            updatePageSelector();
+            showMessage(`Created page ${newPage.num}: "${newPage.name}"`, 'success');
+        }
+
+        function deleteCurrentPage() {
+            const slider = document.getElementById('deletePageSlider');
+            if (parseInt(slider.value) < 100) {
+                showMessage('Unlock slider to delete page', 'error');
+                return;
+            }
+
+            if (currentPageIndex < 0 || pages.length === 0) {
+                showMessage('No page to delete', 'error');
+                return;
+            }
+            const pageName = document.getElementById('pageName').value;
+            if (confirm(`Delete page: "${pageName}"?`)) {
+                pages.splice(currentPageIndex, 1);
+                if (pages.length === 0) {
+                    currentPageIndex = -1;
+                    clearCanvas();
+                    document.getElementById('pageName').value = 'Untitled Page';
+                } else {
+                    currentPageIndex = Math.max(0, currentPageIndex - 1);
+                    loadPageData(currentPageIndex);
+                }
+                // Reset slider after successful deletion
+                slider.value = 0;
+                document.getElementById('deletePageLabel').textContent = 'Locked';
+                document.getElementById('deletePageBtn').classList.add('danger-button-locked');
+                updatePageSelector();
+                showMessage('Page deleted', 'success');
+            }
+        }
+
+        function loadPageData(index) {
+            if (index < 0 || index >= pages.length) return;
+            const page = pages[index];
+            currentPageIndex = index;
+
+            document.getElementById('pageName').value = page.name;
+            document.getElementById('pageZone').value = page.zone;
+            document.getElementById('orientation').value = page.orientation;
+            document.getElementById('gridWidth').value = page.gridWidth;
+            document.getElementById('gridHeight').value = page.gridHeight;
+            document.getElementById('bgColor').value = page.bgColor;
+
+            canvasWidth = page.gridWidth;
+            canvasHeight = page.gridHeight;
+            elements = JSON.parse(JSON.stringify(page.elements));
+            nextElementId = Math.max(...elements.map(e => e.id || 0)) + 1 || 1;
+
+            if (page.orientation === 'portrait') {
+                document.querySelector('.canvas-container').classList.remove('landscape');
+                document.getElementById('canvasLabel').textContent = 'Canvas — Portrait';
+            } else {
+                document.querySelector('.canvas-container').classList.add('landscape');
+                document.getElementById('canvasLabel').textContent = 'Canvas — Landscape';
+            }
+
+            document.getElementById('canvasFrame').style.backgroundColor = page.bgColor;
+            initializeGrid();
+            renderElements();
+            updateToolbar();
+            selectedElement = null;
+            showProperties();
+        }
+
+        function loadSelectedPage() {
+            const selector = document.getElementById('pageSelector');
+            const value = selector.value;
+            if (value && value.startsWith('custom-')) {
+                const idx = parseInt(value.split('-')[1]);
+                loadPageData(idx);
+            }
+        }
+
+        function updatePageSelector() {
+            const selector = document.getElementById('pageSelector');
+            const currentIdx = currentPageIndex;
+            selector.innerHTML = '';
+
+            if (pages.length === 0) {
+                selector.innerHTML = '<option value="">— No pages —</option>';
+                return;
+            }
+
+            pages.forEach((page, idx) => {
+                const option = document.createElement('option');
+                option.value = `custom-${idx}`;
+                option.textContent = `${page.num}. ${page.name}`;
+                if (idx === currentIdx) option.selected = true;
+                selector.appendChild(option);
+            });
+        }
+
+        function persistProject(showFeedback = false) {
+            syncCurrentPageFromUI();
+            const projectName = document.getElementById('projectName').value || 'Untitled Project';
+            localStorage.setItem('mavisProject', JSON.stringify({
+                name: projectName,
+                pages: pages,
+                currentPageIndex: currentPageIndex,
+                instanceRegistry: instanceRegistry,
+                nextInstanceId: nextInstanceId,
+                imageLibrary: imageLibrary,
+                nextImageId: nextImageId
+            }));
+            if (showFeedback) showMessage(`✓ Project saved: "${projectName}"`, 'success');
+        }
+
+        function saveProject() {
+            persistProject(true);
+        }
+
+        function downloadProjectCSV() {
+            const projectName = document.getElementById('projectName').value || 'Untitled Project';
+            let csv = `PROJECT: ${projectName}\n`;
+            csv += `Generated: ${new Date().toISOString()}\n\n`;
+
+            // TABLE 1: Master Instance Registry
+            csv += '=== MASTER INSTANCE REGISTRY ===\n';
+            csv += 'Instance ID,Type,Base Name,Created At,Status,Deleted At\n';
+
+            instanceRegistry.forEach(entry => {
+                const deletedAt = entry.deletedAt || '—';
+                csv += `${entry.instanceId},"${entry.type}","${entry.baseName}","${entry.createdAt}","${entry.status}","${deletedAt}"\n`;
+            });
+
+            // TABLE 2: Page Layouts
+            csv += '\n=== PAGE LAYOUTS ===\n';
+            csv += 'Page #,Page Name,Instance ID,Type,Label,Position (X;Y),Size (W×H),Z-Index\n';
+
+            pages.forEach(page => {
+                // Sort elements by z-index for this page
+                const sortedPageElements = [...page.elements].sort((a, b) => (a.zIndex || 0) - (b.zIndex || 0));
+                sortedPageElements.forEach(elem => {
+                    const instanceId = elem.instanceId || '—';
+                    csv += `${page.num},"${page.name}","${instanceId}","${elem.type}","${elem.label}","(${elem.x};${elem.y})","${elem.width}×${elem.height}",${elem.zIndex || 0}\n`;
+                });
+            });
+
+            const blob = new Blob([csv], { type: 'text/csv;charset=utf-8;' });
+            const url = URL.createObjectURL(blob);
+            const a = document.createElement('a');
+            a.href = url;
+            a.download = `${projectName.replace(/\s+/g, '-')}-${new Date().toISOString().split('T')[0]}.csv`;
+            a.click();
+            URL.revokeObjectURL(url);
+            showMessage('Project CSV exported with instance registry!', 'success');
+        }
+
+        function roundedRectPath(ctx, x, y, width, height, radius) {
+            const r = Math.max(0, Math.min(radius, width / 2, height / 2));
+            ctx.beginPath();
+            ctx.moveTo(x + r, y);
+            ctx.arcTo(x + width, y, x + width, y + height, r);
+            ctx.arcTo(x + width, y + height, x, y + height, r);
+            ctx.arcTo(x, y + height, x, y, r);
+            ctx.arcTo(x, y, x + width, y, r);
+            ctx.closePath();
+        }
+
+        function loadImageForExport(src) {
+            return new Promise((resolve, reject) => {
+                const img = new Image();
+                img.onload = () => resolve(img);
+                img.onerror = reject;
+                img.src = src;
+            });
+        }
+
+        function syncCurrentPageFromUI() {
+            if (currentPageIndex < 0 || currentPageIndex >= pages.length) return;
+            const page = pages[currentPageIndex];
+            page.name = document.getElementById('pageName').value || page.name;
+            page.zone = document.getElementById('pageZone').value;
+            page.orientation = document.getElementById('orientation').value;
+            page.gridWidth = canvasWidth;
+            page.gridHeight = canvasHeight;
+            page.bgColor = document.getElementById('bgColor').value;
+            page.elements = JSON.parse(JSON.stringify(elements));
+        }
+
+        async function renderPageToCanvas(page, scale = 2) {
+            const maxGrid = Math.max(page.gridWidth || 1, page.gridHeight || 1);
+            const baseCell = Math.max(24, Math.min(90, Math.floor(720 / maxGrid)));
+            const exportCell = baseCell * scale;
+            const width = Math.max(1, page.gridWidth) * exportCell;
+            const height = Math.max(1, page.gridHeight) * exportCell;
+            const canvas = document.createElement('canvas');
+            canvas.width = width;
+            canvas.height = height;
+            const ctx = canvas.getContext('2d');
+
+            ctx.fillStyle = page.bgColor || '#ffffff';
+            ctx.fillRect(0, 0, width, height);
+
+            const rgb = hexToRgb(gridColor);
+            ctx.strokeStyle = `rgba(${rgb.r}, ${rgb.g}, ${rgb.b}, 0.35)`;
+            ctx.lineWidth = Math.max(1, scale);
+            for (let col = 0; col <= page.gridWidth; col++) {
+                const x = col * exportCell;
+                ctx.beginPath();
+                ctx.moveTo(x, 0);
+                ctx.lineTo(x, height);
+                ctx.stroke();
+            }
+            for (let row = 0; row <= page.gridHeight; row++) {
+                const y = row * exportCell;
+                ctx.beginPath();
+                ctx.moveTo(0, y);
+                ctx.lineTo(width, y);
+                ctx.stroke();
+            }
+
+            const sorted = [...(page.elements || [])].sort((a, b) => (a.zIndex || 0) - (b.zIndex || 0));
+            for (const elem of sorted) {
+                const x = elem.x * exportCell;
+                const y = elem.y * exportCell;
+                const w = Math.max(1, elem.width) * exportCell;
+                const h = Math.max(1, elem.height) * exportCell;
+                const typeData = ELEMENT_TYPES[elem.type] || { icon: '', color: '#607d8b' };
+                const image = elem.imageId ? imageLibrary.find(img => img.id === elem.imageId) : null;
+
+                ctx.save();
+                roundedRectPath(ctx, x + 2 * scale, y + 2 * scale, Math.max(1, w - 4 * scale), Math.max(1, h - 4 * scale), 6 * scale);
+                ctx.fillStyle = 'rgba(255,255,255,0.94)';
+                ctx.fill();
+                ctx.strokeStyle = typeData.color;
+                ctx.lineWidth = 2 * scale;
+                ctx.stroke();
+
+                if (image && image.data) {
+                    try {
+                        const img = await loadImageForExport(image.data);
+                        ctx.save();
+                        roundedRectPath(ctx, x + 6 * scale, y + 6 * scale, Math.max(1, w - 12 * scale), Math.max(1, h - 12 * scale), 4 * scale);
+                        ctx.clip();
+                        const ratio = Math.min((w - 12 * scale) / img.width, (h - 12 * scale) / img.height);
+                        const drawW = img.width * ratio;
+                        const drawH = img.height * ratio;
+                        ctx.drawImage(img, x + (w - drawW) / 2, y + (h - drawH) / 2, drawW, drawH);
+                        ctx.restore();
+                    } catch (_) {
+                        // Keep the labeled placeholder if a local image cannot be decoded.
+                    }
+                }
+
+                const fontSize = Math.max(12 * scale, Math.min(22 * scale, Math.floor(h * 0.24)));
+                ctx.font = `600 ${fontSize}px system-ui, sans-serif`;
+                ctx.fillStyle = '#222222';
+                ctx.textAlign = 'center';
+                ctx.textBaseline = 'middle';
+                const label = `${typeData.icon ? typeData.icon + ' ' : ''}${elem.label || elem.type}`;
+                const maxLabelWidth = Math.max(20, w - 18 * scale);
+                let shown = label;
+                while (shown.length > 1 && ctx.measureText(shown).width > maxLabelWidth) {
+                    shown = shown.slice(0, -1);
+                }
+                if (shown !== label) shown = shown.slice(0, Math.max(0, shown.length - 1)) + '…';
+                ctx.fillText(shown, x + w / 2, y + h / 2);
+
+                if (elem.instanceId) {
+                    const tagSize = Math.max(9 * scale, 10);
+                    ctx.font = `${tagSize}px system-ui, sans-serif`;
+                    ctx.textAlign = 'right';
+                    ctx.textBaseline = 'top';
+                    const tag = String(elem.instanceId);
+                    const tw = ctx.measureText(tag).width + 8 * scale;
+                    ctx.fillStyle = 'rgba(0,0,0,0.62)';
+                    ctx.fillRect(x + w - tw - 4 * scale, y + 4 * scale, tw, tagSize + 6 * scale);
+                    ctx.fillStyle = '#ffffff';
+                    ctx.fillText(tag, x + w - 8 * scale, y + 7 * scale);
+                }
+                ctx.restore();
+            }
+
+            return canvas;
+        }
+
+        async function exportPagePNG() {
+            if (currentPageIndex < 0 || pages.length === 0) {
+                showMessage('No page to export', 'error');
+                return;
+            }
+
+            try {
+                syncCurrentPageFromUI();
+                showMessage('Rendering page...', 'info');
+                const page = pages[currentPageIndex];
+                const canvas = await renderPageToCanvas(page, 2);
+                const link = document.createElement('a');
+                const projectName = document.getElementById('projectName').value || 'Untitled Project';
+                const pageName = page.name || `Page ${currentPageIndex + 1}`;
+                link.download = `${projectName}-${pageName}-${new Date().toISOString().split('T')[0]}.png`;
+                link.href = canvas.toDataURL('image/png');
+                link.click();
+                showMessage(`Page "${pageName}" exported as PNG!`, 'success');
+            } catch (err) {
+                console.error('Export error:', err);
+                showMessage('Failed to export page', 'error');
+            }
+        }
+
+        async function exportAllPagesPNG() {
+            if (pages.length === 0) {
+                showMessage('No pages to export', 'error');
+                return;
+            }
+
+            try {
+                syncCurrentPageFromUI();
+                showMessage('Rendering all pages...', 'info');
+                const projectName = document.getElementById('projectName').value || 'Untitled Project';
+                const pageCanvases = [];
+
+                for (const page of pages) {
+                    pageCanvases.push(await renderPageToCanvas(page, 2));
+                }
+
+                const cols = pageCanvases.length === 1 ? 1 : 2;
+                const rows = Math.ceil(pageCanvases.length / cols);
+                const padding = 24;
+                const cellWidth = Math.max(...pageCanvases.map(c => c.width));
+                const cellHeight = Math.max(...pageCanvases.map(c => c.height));
+                const gridCanvas = document.createElement('canvas');
+                gridCanvas.width = cols * cellWidth + (cols + 1) * padding;
+                gridCanvas.height = rows * cellHeight + (rows + 1) * padding;
+
+                const ctx = gridCanvas.getContext('2d');
+                ctx.fillStyle = '#f5f5f5';
+                ctx.fillRect(0, 0, gridCanvas.width, gridCanvas.height);
+
+                pageCanvases.forEach((pageCanvas, idx) => {
+                    const col = idx % cols;
+                    const row = Math.floor(idx / cols);
+                    const x = padding + col * cellWidth + (cellWidth - pageCanvas.width) / 2;
+                    const y = padding + row * cellHeight + (cellHeight - pageCanvas.height) / 2;
+                    ctx.drawImage(pageCanvas, x, y);
+                });
+
+                const link = document.createElement('a');
+                link.download = `${projectName}-all-pages-${new Date().toISOString().split('T')[0]}.png`;
+                link.href = gridCanvas.toDataURL('image/png');
+                link.click();
+                showMessage(`All ${pageCanvases.length} pages exported as PNG grid!`, 'success');
+            } catch (err) {
+                console.error('Export error:', err);
+                showMessage('Failed to export pages', 'error');
+            }
+        }
+
+        init();
+    </script>
+</body>
+</html>
